@@ -59,13 +59,13 @@ public:
 		std::string request_body;
 
 		// Get what the remote response is to the request.
-		void async_get_remote(Headers req_headers, std::function<void(Ptr, Response)> handler);
+		void async_get_remote(Headers request_headers, std::function<void(Ptr, Response)> handler);
 		// Get what the remote response is to the request, then immediately send it to the client.
 		void forward() { forward(request_headers); }
-		void forward(Headers req_headers);
+		void forward(Headers request_headers);
 
 		// Send an arbitrary reply to the client.
-		void reply(std::string status_code, std::string status_message, Headers headers, std::string body);
+		void reply(std::string status_code, std::string status_message, Headers response_headers, std::string body);
 	};
 
 	void on_connection(std::function<void(Connection::Ptr)>);

@@ -15,13 +15,13 @@ struct HttpProxy::Impl {
 		do_accept();
 	}
 	asio::io_service io_service;
-  	asio::ip::tcp::endpoint endpoint;
-  	asio::ip::tcp::acceptor acceptor;
-  	std::function<void(Connection::Ptr)> on_connection;
-  	std::function<void(std::string, bool)> on_failure;
+	asio::ip::tcp::endpoint endpoint;
+	asio::ip::tcp::acceptor acceptor;
+	std::function<void(Connection::Ptr)> on_connection;
+	std::function<void(std::string, bool)> on_failure;
 
-  	void do_accept();
-  	void fail(std::string, bool);
+	void do_accept();
+	void fail(std::string, bool);
 };
 
 struct HttpProxy::Connection::Impl {
@@ -32,20 +32,20 @@ struct HttpProxy::Connection::Impl {
 	{}
 	asio::ip::tcp::resolver resolver;
 	asio::ip::tcp::socket clientsocket;
-    asio::ip::tcp::socket serversocket;
-    asio::streambuf clientrecvbuf;
-    asio::streambuf serverrecvbuf;
-    std::string serversendbuf;
-    void start(Ptr cxn);
-    void on_client_headers(Ptr cxn, const std::error_code& ec, size_t);
-    void do_server_get(Ptr cxn, Headers req_headers, std::function<void(Ptr, Response)>);
-    void on_server_resolve(Ptr cxn, std::function<void(Ptr, Response)> fn, asio::ip::tcp::resolver::iterator endpoint);
-    void on_server_headers(Ptr cxn, std::function<void(Ptr, Response)>, const std::error_code& ec, size_t);
-    void do_server_body(Ptr cxn, Response resp, std::function<void(std::string, bool)> fn);
-    void tweak_headers(Headers& headers, bool ischunked, std::size_t bodysize = 0);
-    void do_client_reply_headers(Ptr cxn, std::string status_code, std::string status_message, Headers headers);
-    void do_client_write_raw(Ptr cxn, std::string);
-    bool do_client_write_chunk(Ptr cxn, std::string);
+	asio::ip::tcp::socket serversocket;
+	asio::streambuf clientrecvbuf;
+	asio::streambuf serverrecvbuf;
+	std::string serversendbuf;
+	void start(Ptr cxn);
+	void on_client_headers(Ptr cxn, const std::error_code& ec, size_t);
+	void do_server_get(Ptr cxn, Headers req_headers, std::function<void(Ptr, Response)>);
+	void on_server_resolve(Ptr cxn, std::function<void(Ptr, Response)> fn, asio::ip::tcp::resolver::iterator endpoint);
+	void on_server_headers(Ptr cxn, std::function<void(Ptr, Response)>, const std::error_code& ec, size_t);
+	void do_server_body(Ptr cxn, Response resp, std::function<void(std::string, bool)> fn);
+	void tweak_headers(Headers& headers, bool ischunked, std::size_t bodysize = 0);
+	void do_client_reply_headers(Ptr cxn, std::string status_code, std::string status_message, Headers headers);
+	void do_client_write_raw(Ptr cxn, std::string);
+	bool do_client_write_chunk(Ptr cxn, std::string);
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ void HttpProxy::on_failure(std::function<void(std::string, bool)> handler) {
 }
 
 int HttpProxy::get_local_port_number() {
-  	return impl->acceptor.local_endpoint().port();
+	return impl->acceptor.local_endpoint().port();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
