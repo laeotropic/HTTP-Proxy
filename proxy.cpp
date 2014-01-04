@@ -390,6 +390,9 @@ void HttpProxy::Connection::Impl::on_client_headers(Ptr cxn, const std::error_co
 			if (!no_error) {
 				cxn->parent->fail("on_client_chunky_body: malformed chunkiness");
 			} else {
+				cxn->request_headers["Transfer-Encoding"].clear();
+				cxn->request_headers["Content-Length"].clear();
+				cxn->request_headers["Content-Length"].emplace_back(std::to_string(cxn->request_body.size()));
 				cxn->parent->on_connection(cxn);
 			}
 		}, [cxn](const std::string& cat){
