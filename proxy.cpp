@@ -173,7 +173,8 @@ std::pair<stream_buf_iterator, bool> end_of_read_headers(stream_buf_iterator sta
 
 std::function<std::pair<stream_buf_iterator, bool>(stream_buf_iterator, stream_buf_iterator)> read_exactly(size_t bytes) {
 	return [bytes](stream_buf_iterator start, stream_buf_iterator end) -> std::pair<stream_buf_iterator, bool> {
-		if (end < start + bytes) {
+		assert(end - start >= 0);
+		if ((size_t)(end - start) < bytes) {
 			return std::make_pair(start, false);
 		}
 		return std::make_pair(start + bytes, true);
@@ -183,7 +184,8 @@ std::function<std::pair<stream_buf_iterator, bool>(stream_buf_iterator, stream_b
 std::function<std::pair<stream_buf_iterator, bool>(stream_buf_iterator, stream_buf_iterator)> read_at_most(size_t bytes) {
 	return [bytes](stream_buf_iterator start, stream_buf_iterator end) -> std::pair<stream_buf_iterator, bool> {
 		if (end == start) return std::make_pair(start, false);
-		if (end < start + bytes) {
+		assert(end - start >= 0);
+		if ((size_t)(end - start) < bytes) {
 			return std::make_pair(end, true);
 		}
 		return std::make_pair(start + bytes, true);
