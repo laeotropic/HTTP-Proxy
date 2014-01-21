@@ -30,9 +30,9 @@ struct HttpProxy::Connection::Impl {
 		, serversocket(parent->io_service)
 		, resolver(parent->io_service)
 	{}
-	asio::ip::tcp::resolver resolver;
 	asio::ip::tcp::socket clientsocket;
 	asio::ip::tcp::socket serversocket;
+	asio::ip::tcp::resolver resolver;
 	asio::streambuf clientrecvbuf;
 	asio::streambuf serverrecvbuf;
 	std::string serversendbuf;
