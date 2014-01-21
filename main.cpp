@@ -1,7 +1,7 @@
 #include "proxy.hpp"
 #include <iostream>
 
-int main(int argc, char** argv)
+int main(int, char**)
 {
 	HttpProxy p("127.0.0.1", 8000);
 

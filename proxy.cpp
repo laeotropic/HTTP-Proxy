@@ -42,7 +42,7 @@ struct HttpProxy::Connection::Impl {
 	void on_server_resolve(Ptr cxn, std::function<void(Ptr, Response)> fn, asio::ip::tcp::resolver::iterator endpoint);
 	void on_server_headers(Ptr cxn, std::function<void(Ptr, Response)>, const std::error_code& ec, size_t);
 	void do_server_body(Ptr cxn, Response resp, std::function<void(std::string, bool)> fn);
-	void tweak_headers(Headers& headers, bool ischunked, std::size_t bodysize = 0);
+	void tweak_headers(Headers& headers, bool ischunked, size_t bodysize = 0);
 	void do_client_reply_headers(Ptr cxn, std::string status_code, std::string status_message, Headers headers);
 	void do_client_write_raw(Ptr cxn, std::string);
 	bool do_client_write_chunk(Ptr cxn, std::string);
@@ -171,19 +171,19 @@ std::pair<stream_buf_iterator, bool> end_of_read_headers(stream_buf_iterator sta
 	return std::make_pair(end, false);
 }
 
-std::function<std::pair<stream_buf_iterator, bool>(stream_buf_iterator, stream_buf_iterator)> read_exactly(std::size_t bytes) {
+std::function<std::pair<stream_buf_iterator, bool>(stream_buf_iterator, stream_buf_iterator)> read_exactly(size_t bytes) {
 	return [bytes](stream_buf_iterator start, stream_buf_iterator end) -> std::pair<stream_buf_iterator, bool> {
-		if (end - start < bytes) {
+		if (end < start + bytes) {
 			return std::make_pair(start, false);
 		}
 		return std::make_pair(start + bytes, true);
 	};
 }
 
-std::function<std::pair<stream_buf_iterator, bool>(stream_buf_iterator, stream_buf_iterator)> read_at_most(std::size_t bytes) {
+std::function<std::pair<stream_buf_iterator, bool>(stream_buf_iterator, stream_buf_iterator)> read_at_most(size_t bytes) {
 	return [bytes](stream_buf_iterator start, stream_buf_iterator end) -> std::pair<stream_buf_iterator, bool> {
 		if (end == start) return std::make_pair(start, false);
-		if (end - start < bytes) {
+		if (end < start + bytes) {
 			return std::make_pair(end, true);
 		}
 		return std::make_pair(start + bytes, true);
@@ -282,7 +282,7 @@ std::string read_str_from_buf(asio::streambuf& buf, size_t size) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void do_chunked_encoding_head(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out, std::string in);
-void do_chunked_encoding_body(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out, std::string in, std::size_t len);
+void do_chunked_encoding_body(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out, std::string in, size_t len);
 void do_chunked_encoding_term(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out, std::string in);
 
 void do_chunked_encoding(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out) {
@@ -290,7 +290,7 @@ void do_chunked_encoding(std::function<void(std::function<void(std::string)>)> g
 }
 
 void do_chunked_encoding_head(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out, std::string in) {
-	std::size_t body_size = std::stoll(in, 0, 0x10);
+	size_t body_size = std::stoll(in, 0, 0x10);
 	if (body_size == 0) {
 		get_more(std::bind(&do_chunked_encoding_term, get_more, done, out, _1));
 	} else {
@@ -298,7 +298,7 @@ void do_chunked_encoding_head(std::function<void(std::function<void(std::string)
 	}
 }
 
-void do_chunked_encoding_body(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out, std::string in, std::size_t len) {
+void do_chunked_encoding_body(std::function<void(std::function<void(std::string)>)> get_more, std::function<void(bool)> done, std::function<void(const std::string&)> out, std::string in, size_t len) {
 	if (in.length() > len + 2) {
 		done(false);
 		return;
@@ -399,7 +399,7 @@ void HttpProxy::Connection::Impl::on_client_headers(Ptr cxn, const std::error_co
 			cxn->request_body += cat;
 		});
 	} else if (header_contains(cxn->request_headers, "Content-Length")) {
-		long long length = std::stoll(cxn->request_headers["Content-Length"].front());
+		size_t length = std::stoll(cxn->request_headers["Content-Length"].front());
 		asio::async_read_until(clientsocket, clientrecvbuf, read_exactly(length), [length, cxn, this](const std::error_code& error, size_t len){
 			if (error) {
 				cxn->parent->fail("do_client_body: " + error.message() + " (" + std::to_string(error.value()) + ")" + " bfusize: " + std::to_string(clientrecvbuf.size()) + "/" + std::to_string(len));
@@ -450,7 +450,7 @@ void HttpProxy::Connection::Impl::on_server_resolve(Ptr cxn, std::function<void(
 			return;
 		}
 
-		asio::async_write(serversocket, asio::buffer(serversendbuf), [cxn, this, fn](const std::error_code& err, size_t len){
+		asio::async_write(serversocket, asio::buffer(serversendbuf), [cxn, this, fn](const std::error_code&, size_t){
 			asio::async_read_until(serversocket, serverrecvbuf, &end_of_read_headers, std::bind(&Impl::on_server_headers, this, cxn, fn, _1, _2));
 		});
 	});
@@ -549,7 +549,7 @@ void HttpProxy::Connection::Impl::do_server_body(Ptr cxn, Response resp, std::fu
 	});
 }
 
-void HttpProxy::Connection::Impl::tweak_headers(Headers& headers, bool ischunked, std::size_t bodysize){
+void HttpProxy::Connection::Impl::tweak_headers(Headers& headers, bool ischunked, size_t bodysize){
 	headers["Connection"].clear();
 	headers["Connection"].emplace_back("close");
 
