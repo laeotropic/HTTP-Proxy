@@ -117,13 +117,15 @@ HttpProxy::Connection::~Connection() {
 void HttpProxy::Connection::async_get_remote(Headers req_headers, std::function<void(Ptr, Response)> handler) {
 	impl->do_server_get(this->shared_from_this(), req_headers, [handler](Ptr cxn, Response resp){
 		resp.body.clear();
-		cxn->impl->do_server_body(cxn, resp, [cxn, resp, handler](std::string str, bool error) mutable {
+		auto accumulator = std::make_shared<std::string>();
+		cxn->impl->do_server_body(cxn, resp, [cxn, resp, handler, accumulator](std::string str, bool error) mutable {
 			if (error) return;
 			if (str.empty()) {
+				resp.body = *accumulator;
 				handler(cxn, resp);
 				return;
 			}
-			resp.body += str;
+			*accumulator += str;
 		});
 	});
 }
