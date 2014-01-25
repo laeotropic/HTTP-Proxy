@@ -2,6 +2,7 @@
 
 #define ASIO_STANDALONE
 #include <asio.hpp>
+#include <queue>
 
 using namespace std::placeholders;
 
@@ -36,6 +37,7 @@ struct HttpProxy::Connection::Impl {
 	asio::streambuf clientrecvbuf;
 	asio::streambuf serverrecvbuf;
 	std::string serversendbuf;
+	std::queue<std::string> clientsendbuf;
 	void start(Ptr cxn);
 	void on_client_headers(Ptr cxn, const std::error_code& ec, size_t);
 	void do_server_get(Ptr cxn, Headers req_headers, std::function<void(Ptr, Response)>);
@@ -46,6 +48,7 @@ struct HttpProxy::Connection::Impl {
 	void do_client_reply_headers(Ptr cxn, std::string status_code, std::string status_message, Headers headers);
 	void do_client_write_raw(Ptr cxn, std::string);
 	bool do_client_write_chunk(Ptr cxn, std::string);
+	void do_client_write_sendbuf_handler(Ptr cxn);
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -561,7 +564,7 @@ void HttpProxy::Connection::Impl::tweak_headers(Headers& headers, bool ischunked
 	headers["Content-Length"].clear();
 	if (ischunked) {
 		headers["Transfer-Encoding"].emplace_back("chunked");
-	} else {
+	} else if (bodysize != 0) {
 		headers["Content-Length"].emplace_back(std::to_string(bodysize));
 	}
 }
@@ -579,9 +582,26 @@ void HttpProxy::Connection::Impl::do_client_reply_headers(Ptr cxn, std::string s
 }
 
 void HttpProxy::Connection::Impl::do_client_write_raw(Ptr cxn, std::string str) {
-	std::error_code error;
-	asio::write(this->clientsocket, asio::buffer(str), error);
-	if (error) cxn->parent->fail("do_client_write_raw: " + error.message() + " (" + std::to_string(error.value()) + ")");
+	bool isRunning = !clientsendbuf.empty();
+
+	clientsendbuf.push(str);
+
+	if (!isRunning) {
+		do_client_write_sendbuf_handler(cxn);
+	}
+}
+
+void HttpProxy::Connection::Impl::do_client_write_sendbuf_handler(Ptr cxn) {
+	asio::async_write(this->clientsocket, asio::buffer(clientsendbuf.front()), [cxn, this](const std::error_code& error, std::size_t){
+		if (error) {
+			cxn->parent->fail("do_client_write_raw: " + error.message() + " (" + std::to_string(error.value()) + ")");
+			return;
+		}
+		this->clientsendbuf.pop();
+		if (!this->clientsendbuf.empty()) {
+			do_client_write_sendbuf_handler(cxn);
+		}
+	});
 }
 
 bool HttpProxy::Connection::Impl::do_client_write_chunk(Ptr cxn, std::string str) {

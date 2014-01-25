@@ -25,7 +25,7 @@ int main(int, char**)
 				cxn->reply(resp.status_code, resp.status_message, resp.headers, resp.body);
 			});
 		} else if (false) {
-			cxn->forward();	
+			cxn->forward();
 		} else {
 			cxn->reply("200", "OK", HttpProxy::Headers(), "Requested: " + cxn->request_path);
 		}
